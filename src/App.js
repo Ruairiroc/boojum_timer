@@ -1,24 +1,31 @@
-import logo from './logo.svg';
 import './App.css';
+import Timers from './timers.js';
+import Login from './Login';
+import Signup from './Signup';
+import PrivateRoute from './PrivateRoute';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+  const foodItems = ['Mexican Rice','Lime Rice','Chicken','Hot Honey Chicken','Beef','Pork','Chilli','Queso','Pinto Beans','Black Beans','3 Bean','Mock','Chorizo'];
+
+  return(
+    <Router>
+      <div>
+        <h1 className='header'>3 Hour Timer</h1>
+
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/" element={
+          <PrivateRoute>
+            <Timers items={foodItems}></Timers>
+          </PrivateRoute>
+          } />
+
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

@@ -7,7 +7,7 @@ import './App.css';
 
 
 function Timers({items}){
-
+    // this is a test commit
     const[showRectangle, setShowRectangle] = useState(Array(items.length).fill(false));
     const[showTimer, setShowTimer] = useState(Array(items.length).fill(5));
     const[deleteMode, setDeleteMode] = useState(false);

@@ -17,12 +17,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/" element={
-          <PrivateRoute>
-            <Timers items={foodItems}></Timers>
-          </PrivateRoute>
-          } />
-
+          <Route path="/timers" element={<Timers items={foodItems}></Timers>} />
+           
         </Routes>
       </div>
     </Router>

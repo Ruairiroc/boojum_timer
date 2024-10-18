@@ -1,8 +1,5 @@
 import './App.css';
 import Timers from './timers.js';
-import Login from './Login';
-import Signup from './Signup';
-import PrivateRoute from './PrivateRoute';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 
@@ -15,8 +12,6 @@ function App() {
         <h1 className='header'>3 Hour Timer</h1>
 
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
           <Route path="/timers" element={<Timers items={foodItems}></Timers>} />
            
         </Routes>

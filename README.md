@@ -1,5 +1,5 @@
 # TODO:
 
-set up node backend boilerplate code. USE TUTORIAL OF SOME SORT
-tRY TO GET FRONT END AND BACK END CONNECTING WITH EACH OTHER
-keep in same repository for simplicity
+HACCP Timer:
+To be used to monitor the time hot food has been used in service. When new Food has been brought out, simply click the timer and a new timer will start.
+Undo & Delete functionality has also been included.

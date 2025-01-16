@@ -1,6 +1,6 @@
 import './App.css';
-import Timers from './timers.js';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Timers from './timers_2.js';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 
 function App() {
@@ -12,7 +12,9 @@ function App() {
         <h1 className='header'>3 Hour Timer</h1>
 
         <Routes>
-          <Route path="/timers" element={<Timers items={foodItems}></Timers>} />
+        <Route path="/" element={<Navigate to="/timers_2"/>} />
+
+          <Route path="/timers_2" element={<Timers items={foodItems}></Timers>} />
            
         </Routes>
       </div>

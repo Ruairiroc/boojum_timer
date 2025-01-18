@@ -1,6 +1,6 @@
 
   // simplified to one object using foodItem as key and duration as value
-  let timers = {
+  const baseTimers = {
     "Mexican Rice": null, 
     "Lime Rice": null, 
     "Chicken": null, 
@@ -16,29 +16,40 @@
     "Chorizo": null
   };
 
+  let timers = {...baseTimers};
+
   // moving this here to keep track of undo history even when page is refreshed
-  // initialised with first state of all null timers, shouldn't ever be zero items in the array
-  let undoStack = [timers];
+  // I don't like the idea of an infinite array, could build up too much memory
+  // maybe limit it to 20 or so items in future
+  let undoStack = [];
 
   // Function to update undo stack when any action is taken
+  // if undo stack is empty, push base timers to it
+  // had buggy behaviour if I didn't do this, as it would push the current timers object to the stack, which for some reason wasn't always all nulls on the first go
   addToUndoStack = () => {
-    undoStack.push({ ...timers });
-    console.log(undoStack);
+    if (undoStack.length === 0) {
+      undoStack.push({...baseTimers});
+    } else {
+      undoStack.push({...timers});
+      console.log(undoStack);
+    }
   };
 
   // function to pop last item from undo stack and set timers to previous value
-  const undoLastAction = () => {
-    if (undoStack.length > 1) {
+  const undoLastAction = (req, res) => {
+    if (undoStack.length > 0) {
       const previousState = undoStack.pop();
+      console.log("setting timers to: ",previousState);
       timers = previousState;
-    } else if (undoStack.length === 1) {
-      // if only one item left in undo stack, set timers to that value but don't remove it
-      timers = undoStack[0];
+    }  else if (undoStack.length === 0) {
+      timers = {...baseTimers};
+      console.log("setting timers to base: ",baseTimers);
     }
+    res.status(200).json({ message: "Timers set to previous state", timers: timers});
   };
   // Controller to handle getting all timers
   const getTimers = (req, res) => {
-    res.json(timers);
+    res.status(200).json(timers);
   };
   
   // Controller to handle starting or resetting a timer
@@ -48,7 +59,7 @@
     addToUndoStack();
     timers[foodItem] = Date.now() + duration;
   
-    res.status(200).json({ message: "Timer started/reset", endTime: timers[foodItem] });
+    res.status(200).json({ message: "Timer started/reset for "+foodItem, endTime: timers[foodItem], timers: timers});
   };
   
   
@@ -60,9 +71,9 @@
     if (timers.hasOwnProperty(foodItem)) {
       addToUndoStack();
       timers[foodItem] = null;
-      res.status(200).json({ message: `Timer stopped for ${foodItem}` });
+      res.status(200).json({ message: `Timer stopped for ${foodItem}`, timers: timers });
     } else {
-      res.status(400).json({ message: `Timer for ${foodItem} not found` });
+      res.status(400).json({ message: `Timer for ${foodItem} not found`});
     }
   };
   

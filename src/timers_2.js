@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faTrashAlt, faUndo } from "@fortawesome/free-solid-svg-icons";
+import Timer from "./Timer";
 import "./App.css";
 
 function Timers() {
   const [timers, setTimers] = useState({});
   const [deleteMode, setDeleteMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ function Timers() {
     //  thus making sure the function has returned before setting loading to false
     fetchTimers().then(() => setLoading(false));
     const interval = setInterval(() => {
-      fetchTimers();
+      setCurrentTime(Date.now());
     }, 1000); // Update every second
 
     // Cleanup interval on unmount
@@ -54,11 +56,12 @@ function Timers() {
 
       // updated post request to send foodItem and duration in the body
       // fooditem is the name of the item gotten from the button click
-      await axios.post("http://localhost:5000/api/timers/", { foodItem: foodItem, duration: duration });
-  
+      // the updated timers object is returned in the response from the backend
+      const response = await axios.post("http://localhost:5000/api/timers/", { foodItem: foodItem, duration: duration });
+      setTimers(response.data.timers);
       // Update timers from backend to keep in sync
       // only use backend data as source of truth (stops it going out of sync if only using one data source)
-      fetchTimers();
+      
     } catch (error) {
       console.error("Error starting/resetting timer:", error);
     }
@@ -67,43 +70,24 @@ function Timers() {
   // While to the end user it looks like the timer is being deleted, 
   // we're actually just updating the value in the timers object to null
   // so a post request is more suitable here as it allows necessary data (foodItem) to be sent in the body
-  const deleteTimer = async (foodItem) => {
-    try {
-      await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
-      fetchTimers();
-    } catch (error) {
-      console.error("Error deleting timer:", error);
+  const deleteTimer = async (foodItem, duration) => {
+    // only send request if timer is not at zero
+    if (duration !== null || duration > currentTime) {
+      try {
+        const response = await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
+        setTimers(response.data.timers);
+      } catch (error) {
+        console.error("Error deleting timer:", error);
+      }
     }
   };
 
   const undoLastAction = async () => {
     // send a post request to the backend to set timers object to previous state
     // then fetch updated timers object
-    await axios.post("http://localhost:5000/api/timers/undo/", {});
-    fetchTimers();
+    const response = await axios.post("http://localhost:5000/api/timers/undo/", {});
+    setTimers(response.data.timers);
   };
-
-  const getMilliseconds = (timestamp) => {
-    return timestamp - Date.now();
-  }
-
-  const formatTime = (timestamp) => {
-    if (timestamp === null) {
-      return "Not Running..."
-    } else {
-      const milliseconds = getMilliseconds(timestamp);
-      if (milliseconds <= 0) {
-        // audioRef.current.play();
-        return "00:00:00";
-      }
-      const seconds = Math.floor((milliseconds / 1000));
-      const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
-      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
-      const s = (seconds % 60).toString().padStart(2, "0");
-      return `${h}:${m}:${s}`;
-    }
-  };
-
   
   return (
     <div>
@@ -140,15 +124,15 @@ function Timers() {
       Object.entries(timers).map(([foodItem, duration]) => (
         <div key={foodItem} style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
           <button
-            onClick={() => (deleteMode ? deleteTimer(foodItem) : startOrResetTimer(foodItem))}
+            onClick={() => (deleteMode ? deleteTimer(foodItem, duration) : startOrResetTimer(foodItem))}
             className="button"
           >
             {foodItem}
           </button>
 
-          <div className="rectangle">{formatTime(duration)}</div>
+          <Timer timestamp={duration} currentTime={currentTime}/>
         </div>
-      ))
+      )) // changed timer to it's own component because It's being reused and refreshed so often
     )}
 
       <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" preload="auto"></audio>

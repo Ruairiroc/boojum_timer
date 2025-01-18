@@ -6,13 +6,14 @@ import "./App.css";
 
 function Timers() {
   const [timers, setTimers] = useState({});
-  const [undoStack, setUndoStack] = useState([]); 
   const [deleteMode, setDeleteMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const audioRef = useRef(null);
 
   useEffect(() => {
     setLoading(true);
+    // .then() is for async functions, it will run the function inside the .then() after the first fetchTimers() function it is tacked onto returns,
+    //  thus making sure the function has returned before setting loading to false
     fetchTimers().then(() => setLoading(false));
     const interval = setInterval(() => {
       fetchTimers();
@@ -49,8 +50,6 @@ function Timers() {
 
   const startOrResetTimer = async (foodItem) => {
     try {
-      setUndoStack((prevStack) => [...prevStack, timers]);
-
       const duration = 5 * 60 * 1000; // 5 minutes in milliseconds
 
       // updated post request to send foodItem and duration in the body
@@ -70,8 +69,6 @@ function Timers() {
   // so a post request is more suitable here as it allows necessary data (foodItem) to be sent in the body
   const deleteTimer = async (foodItem) => {
     try {
-      setUndoStack((prevStack) => [...prevStack, timers]);
-
       await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
       fetchTimers();
     } catch (error) {
@@ -79,16 +76,11 @@ function Timers() {
     }
   };
 
-  const undoLastAction = () => {
-    if (undoStack.length > 0) {
-      console.log(undoStack);
-      // Restore the last state from the stack
-      const previousState = undoStack[undoStack.length - 1];
-      setUndoStack((prevStack) => prevStack.slice(0, -1)); // Remove the last state
-      
-      console.log(undoStack);
-      setTimers(previousState); // Restore timers to previous state
-    }
+  const undoLastAction = async () => {
+    // send a post request to the backend to set timers object to previous state
+    // then fetch updated timers object
+    await axios.post("http://localhost:5000/api/timers/undo/", {});
+    fetchTimers();
   };
 
   const getMilliseconds = (timestamp) => {
@@ -97,13 +89,13 @@ function Timers() {
 
   const formatTime = (timestamp) => {
     if (timestamp === null) {
-      return "00:00:00"
+      return "Not Running..."
     } else {
       const milliseconds = getMilliseconds(timestamp);
-      // if (milliseconds <= 0) {
-      //   audioRef.current.play();
-      //   return "00:00:00";
-      // }
+      if (milliseconds <= 0) {
+        // audioRef.current.play();
+        return "00:00:00";
+      }
       const seconds = Math.floor((milliseconds / 1000));
       const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
       const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
@@ -136,7 +128,6 @@ function Timers() {
       <button
         onClick={undoLastAction}
         className="button"
-        disabled={undoStack.length === 0} // Disable if there's no undo history
       >
         <FontAwesomeIcon icon={faUndo} style={{ marginRight: "5px" }} />
         Undo

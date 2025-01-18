@@ -10,7 +10,7 @@ const {
 
 // Define routes and associate them with the controller functions
 router.get('/timers', getTimers); // Get all timers
-router.post('/timers/:index', startOrResetTimer); // Start or reset a specific timer
-router.delete('/timers/:index', stopTimer); // Stop a specific timer
+router.post('/timers/', startOrResetTimer); // Start or reset a specific timer
+router.post('/timers/stop/', stopTimer); // Stop a specific timer
 
 module.exports = router;

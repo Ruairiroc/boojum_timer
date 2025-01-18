@@ -5,16 +5,17 @@ import { faTrash, faTrashAlt, faUndo } from "@fortawesome/free-solid-svg-icons";
 import "./App.css";
 
 function Timers() {
-  const [timers, setTimers] = useState([]);
+  const [timers, setTimers] = useState({});
   const [undoStack, setUndoStack] = useState([]); 
   const [deleteMode, setDeleteMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const audioRef = useRef(null);
 
   useEffect(() => {
-    fetchTimers();
+    setLoading(true);
+    fetchTimers().then(() => setLoading(false));
     const interval = setInterval(() => {
-      updateCountdowns();
+      fetchTimers();
     }, 1000); // Update every second
 
     // Cleanup interval on unmount
@@ -22,52 +23,56 @@ function Timers() {
   }, []);
 
   const fetchTimers = async () => {
-    setLoading(true);
     try {
       const response = await axios.get("http://localhost:5000/api/timers");
-      console.log("Timers fetched:", response.data);  // Log the fetched timers
+      console.log("Timers fetched:", response.data);  // Log the fetched timers object
 
       setTimers(response.data);
     } catch (error) {
       console.error("Error fetching timers:", error);
     }
-    setLoading(false);
   };
 
-  const updateCountdowns = () => {
-    setTimers((prevTimers) =>
-      prevTimers.map((timer) => {
-        if (timer.remainingTime !== null && timer.remainingTime > 0) {
-          return { ...timer, remainingTime: Math.max(timer.remainingTime - 1000, 0) };
-        }
-        return timer;
-      })
-    );
-  };
+  // after spending a long time trying to update this I realised it has no use in this context, we're getting the info from the backend always so no need to have maths going on in the front end...
+  // const updateCountdowns = () => {
+  //   setTimers((prevTimers) =>
+  //     Object.entries(prevTimers).reduce((updatedTimers, [foodItem, timer]) => {
+  //       if ( !!timer && getMilliseconds(timer) > 0) {
+  //         updatedTimers[foodItem] = Math.max(timer - 1000, 0) 
+  //       } else {
+  //         updatedTimers[foodItem] =  null;
+  //       }
+  //       return updatedTimers;
+  //     }, {}) // {} is the initial value of updatedTimers
+  //   );
+  // };
 
-  const startOrResetTimer = async (index) => {
+  const startOrResetTimer = async (foodItem) => {
     try {
-      setUndoStack((prevStack) => [...prevStack, [...timers]]);
+      setUndoStack((prevStack) => [...prevStack, timers]);
 
       const duration = 5 * 60 * 1000; // 5 minutes in milliseconds
-      await axios.post(`http://localhost:5000/api/timers/${index}`, { duration });
+
+      // updated post request to send foodItem and duration in the body
+      // fooditem is the name of the item gotten from the button click
+      await axios.post("http://localhost:5000/api/timers/", { foodItem: foodItem, duration: duration });
   
-      // Update timer directly in the state
-      setTimers((prevTimers) =>
-        prevTimers.map((timer, idx) =>
-          idx === index ? { ...timer, remainingTime: duration } : timer
-        )
-      );
+      // Update timers from backend to keep in sync
+      // only use backend data as source of truth (stops it going out of sync if only using one data source)
+      fetchTimers();
     } catch (error) {
       console.error("Error starting/resetting timer:", error);
     }
   };
 
-  const deleteTimer = async (index) => {
+  // While to the end user it looks like the timer is being deleted, 
+  // we're actually just updating the value in the timers object to null
+  // so a post request is more suitable here as it allows necessary data (foodItem) to be sent in the body
+  const deleteTimer = async (foodItem) => {
     try {
-      setUndoStack((prevStack) => [...prevStack, [...timers]]);
+      setUndoStack((prevStack) => [...prevStack, timers]);
 
-      await axios.delete(`http://localhost:5000/api/timers/${index}`);
+      await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
       fetchTimers();
     } catch (error) {
       console.error("Error deleting timer:", error);
@@ -76,24 +81,38 @@ function Timers() {
 
   const undoLastAction = () => {
     if (undoStack.length > 0) {
+      console.log(undoStack);
       // Restore the last state from the stack
       const previousState = undoStack[undoStack.length - 1];
       setUndoStack((prevStack) => prevStack.slice(0, -1)); // Remove the last state
+      
+      console.log(undoStack);
       setTimers(previousState); // Restore timers to previous state
     }
   };
 
-  const formatTime = (milliseconds) => {
-    if (milliseconds === null) return "Not running";
-    const seconds = Math.floor(milliseconds / 1000);
-    const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
-    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${h}:${m}:${s}`;
+  const getMilliseconds = (timestamp) => {
+    return timestamp - Date.now();
+  }
+
+  const formatTime = (timestamp) => {
+    if (timestamp === null) {
+      return "00:00:00"
+    } else {
+      const milliseconds = getMilliseconds(timestamp);
+      // if (milliseconds <= 0) {
+      //   audioRef.current.play();
+      //   return "00:00:00";
+      // }
+      const seconds = Math.floor((milliseconds / 1000));
+      const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
+      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+      const s = (seconds % 60).toString().padStart(2, "0");
+      return `${h}:${m}:${s}`;
+    }
   };
 
-  if (loading) return <p>Loading...</p>;
-
+  
   return (
     <div>
       <button
@@ -123,19 +142,20 @@ function Timers() {
         Undo
       </button>
 
-      {timers.length === 0 ? (
+      { loading ? (
       <p>No timers available</p>
     ) : (
-      timers.map((timer, index) => (
-        <div key={index} style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+      // modified iterator for simplified {food: duration} object
+      Object.entries(timers).map(([foodItem, duration]) => (
+        <div key={foodItem} style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
           <button
-            onClick={() => (deleteMode ? deleteTimer(index) : startOrResetTimer(index))}
+            onClick={() => (deleteMode ? deleteTimer(foodItem) : startOrResetTimer(foodItem))}
             className="button"
           >
-            {timer.item}
+            {foodItem}
           </button>
 
-          <div className="rectangle">{formatTime(timer.remainingTime)}</div>
+          <div className="rectangle">{formatTime(duration)}</div>
         </div>
       ))
     )}

@@ -1,9 +1,12 @@
 import React from "react";
 
-const Timer = React.memo(({ timestamp, currentTime }) => {
+const Timer = React.memo(({ timestamp, currentTime, audioRef, foodItem }) => {
   const formatTime = (timeLeft) => {
-
-    if (timeLeft <= 0) {
+    console.log(timestamp, currentTime, timeLeft);
+    if (!timestamp) {
+      return "00:00:00";
+    } else  if (!!timestamp && timeLeft <= 0) {
+      showChromeNotification(foodItem);
       return "00:00:00";
     }
     const seconds = Math.floor(timeLeft / 1000);
@@ -13,6 +16,24 @@ const Timer = React.memo(({ timestamp, currentTime }) => {
     return `${h}:${m}:${s}`;
   };
 
+  const showChromeNotification = (foodItem) => {
+    audioRef.current.play();
+    alert(`${foodItem}'s timer has finished!`);
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    return
+    // if (Notification.permission === "granted") {
+        // const notification = new Notification("Timer Done!", {
+        //     body: `${foodItem}'s timer has finished. Click to stop the sound.`,
+        // });
+
+        // notification.onclick = () => {
+        //     audioRef.current.pause();
+        //     audioRef.current.currentTime = 0;
+        //     notification.close();
+        // };
+    // }
+};
   const timeLeft = timestamp - currentTime;
 
   return (

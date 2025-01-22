@@ -13,6 +13,10 @@ function Timers() {
   const audioRef = useRef(null);
 
   useEffect(() => {
+    
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
     setLoading(true);
     // .then() is for async functions, it will run the function inside the .then() after the first fetchTimers() function it is tacked onto returns,
     //  thus making sure the function has returned before setting loading to false
@@ -52,7 +56,7 @@ function Timers() {
 
   const startOrResetTimer = async (foodItem) => {
     try {
-      const duration = 5 * 60 * 1000; // 5 minutes in milliseconds
+      const duration = 5 * 1000; // 5 minutes in milliseconds
 
       // updated post request to send foodItem and duration in the body
       // fooditem is the name of the item gotten from the button click
@@ -130,7 +134,7 @@ function Timers() {
             {foodItem}
           </button>
 
-          <Timer timestamp={duration} currentTime={currentTime}/>
+          <Timer timestamp={duration} currentTime={currentTime} audioRef={audioRef} foodItem={foodItem}/>
         </div>
       )) // changed timer to it's own component because It's being reused and refreshed so often
     )}

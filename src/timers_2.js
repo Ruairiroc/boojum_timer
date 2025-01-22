@@ -11,6 +11,7 @@ function Timers() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const audioRef = useRef(null);
+  const alarm = new Audio("/mixkit-spaceship-alarm-998.mp3");
 
   useEffect(() => {
     
@@ -29,14 +30,20 @@ function Timers() {
     return () => clearInterval(interval);
   }, []);
 
+  const startAudioHandler = useRef(()=>{ // <-- we can put our audio logic here to play.
+    audioRef.muted = false; // <-- sets the audio to unmuted so that the user may here the audio sounds.
+    audioRef.play(); // <-- sets the audio to play so the audio element can start playing for the active user here.
+
+  });
+
   const fetchTimers = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/timers");
-      console.log("Timers fetched:", response.data);  // Log the fetched timers object
+      // console.log("Timers fetched:", response.data);  // Log the fetched timers object
 
       setTimers(response.data);
     } catch (error) {
-      console.error("Error fetching timers:", error);
+      // console.error("Error fetching timers:", error);
     }
   };
 
@@ -55,6 +62,10 @@ function Timers() {
   // };
 
   const startOrResetTimer = async (foodItem) => {
+    // if(audioRef.current.muted){
+    //   startAudioHandler.current(); // <-- we can call the audio function here to play the audio.
+    // }
+    
     try {
       const duration = 5 * 1000; // 5 minutes in milliseconds
 
@@ -67,7 +78,7 @@ function Timers() {
       // only use backend data as source of truth (stops it going out of sync if only using one data source)
       
     } catch (error) {
-      console.error("Error starting/resetting timer:", error);
+      // console.error("Error starting/resetting timer:", error);
     }
   };
 
@@ -75,13 +86,14 @@ function Timers() {
   // we're actually just updating the value in the timers object to null
   // so a post request is more suitable here as it allows necessary data (foodItem) to be sent in the body
   const deleteTimer = async (foodItem, duration) => {
+    console.log("deleting timer", foodItem, duration);
     // only send request if timer is not at zero
     if (duration !== null || duration > currentTime) {
       try {
         const response = await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
         setTimers(response.data.timers);
       } catch (error) {
-        console.error("Error deleting timer:", error);
+        // console.error("Error deleting timer:", error);
       }
     }
   };
@@ -134,12 +146,12 @@ function Timers() {
             {foodItem}
           </button>
 
-          <Timer timestamp={duration} currentTime={currentTime} audioRef={audioRef} foodItem={foodItem}/>
+          <Timer timestamp={duration} currentTime={currentTime} alarm={alarm} audioRef={audioRef} foodItem={foodItem} deleteTimer={deleteTimer}/>
         </div>
       )) // changed timer to it's own component because It's being reused and refreshed so often
     )}
 
-      <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" preload="auto"></audio>
+      <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" muted></audio>
     </div>
   );
 }

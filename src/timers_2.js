@@ -2,19 +2,23 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faTrashAlt, faUndo } from "@fortawesome/free-solid-svg-icons";
+import Timer from "./Timer";
 import "./App.css";
 
 function Timers() {
-  const [timers, setTimers] = useState([]);
-  const [undoStack, setUndoStack] = useState([]); 
+  const [timers, setTimers] = useState({});
   const [deleteMode, setDeleteMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const audioRef = useRef(null);
 
   useEffect(() => {
-    fetchTimers();
+    setLoading(true);
+    // .then() is for async functions, it will run the function inside the .then() after the first fetchTimers() function it is tacked onto returns,
+    //  thus making sure the function has returned before setting loading to false
+    fetchTimers().then(() => setLoading(false));
     const interval = setInterval(() => {
-      updateCountdowns();
+      setCurrentTime(Date.now());
     }, 1000); // Update every second
 
     // Cleanup interval on unmount
@@ -22,78 +26,69 @@ function Timers() {
   }, []);
 
   const fetchTimers = async () => {
-    setLoading(true);
     try {
       const response = await axios.get("http://localhost:5000/api/timers");
-      console.log("Timers fetched:", response.data);  // Log the fetched timers
+      console.log("Timers fetched:", response.data);  // Log the fetched timers object
 
       setTimers(response.data);
     } catch (error) {
       console.error("Error fetching timers:", error);
     }
-    setLoading(false);
   };
 
-  const updateCountdowns = () => {
-    setTimers((prevTimers) =>
-      prevTimers.map((timer) => {
-        if (timer.remainingTime !== null && timer.remainingTime > 0) {
-          return { ...timer, remainingTime: Math.max(timer.remainingTime - 1000, 0) };
-        }
-        return timer;
-      })
-    );
-  };
+  // after spending a long time trying to update this I realised it has no use in this context, we're getting the info from the backend always so no need to have maths going on in the front end...
+  // const updateCountdowns = () => {
+  //   setTimers((prevTimers) =>
+  //     Object.entries(prevTimers).reduce((updatedTimers, [foodItem, timer]) => {
+  //       if ( !!timer && getMilliseconds(timer) > 0) {
+  //         updatedTimers[foodItem] = Math.max(timer - 1000, 0) 
+  //       } else {
+  //         updatedTimers[foodItem] =  null;
+  //       }
+  //       return updatedTimers;
+  //     }, {}) // {} is the initial value of updatedTimers
+  //   );
+  // };
 
-  const startOrResetTimer = async (index) => {
+  const startOrResetTimer = async (foodItem) => {
     try {
-      setUndoStack((prevStack) => [...prevStack, [...timers]]);
-
       const duration = 5 * 60 * 1000; // 5 minutes in milliseconds
-      await axios.post(`http://localhost:5000/api/timers/${index}`, { duration });
-  
-      // Update timer directly in the state
-      setTimers((prevTimers) =>
-        prevTimers.map((timer, idx) =>
-          idx === index ? { ...timer, remainingTime: duration } : timer
-        )
-      );
+
+      // updated post request to send foodItem and duration in the body
+      // fooditem is the name of the item gotten from the button click
+      // the updated timers object is returned in the response from the backend
+      const response = await axios.post("http://localhost:5000/api/timers/", { foodItem: foodItem, duration: duration });
+      setTimers(response.data.timers);
+      // Update timers from backend to keep in sync
+      // only use backend data as source of truth (stops it going out of sync if only using one data source)
+      
     } catch (error) {
       console.error("Error starting/resetting timer:", error);
     }
   };
 
-  const deleteTimer = async (index) => {
-    try {
-      setUndoStack((prevStack) => [...prevStack, [...timers]]);
-
-      await axios.delete(`http://localhost:5000/api/timers/${index}`);
-      fetchTimers();
-    } catch (error) {
-      console.error("Error deleting timer:", error);
+  // While to the end user it looks like the timer is being deleted, 
+  // we're actually just updating the value in the timers object to null
+  // so a post request is more suitable here as it allows necessary data (foodItem) to be sent in the body
+  const deleteTimer = async (foodItem, duration) => {
+    // only send request if timer is not at zero
+    if (duration !== null || duration > currentTime) {
+      try {
+        const response = await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
+        setTimers(response.data.timers);
+      } catch (error) {
+        console.error("Error deleting timer:", error);
+      }
     }
   };
 
-  const undoLastAction = () => {
-    if (undoStack.length > 0) {
-      // Restore the last state from the stack
-      const previousState = undoStack[undoStack.length - 1];
-      setUndoStack((prevStack) => prevStack.slice(0, -1)); // Remove the last state
-      setTimers(previousState); // Restore timers to previous state
-    }
+  const undoLastAction = async () => {
+    // send a post request to the backend to set timers object to previous state
+    // then fetch updated timers object
+    const response = await axios.post("http://localhost:5000/api/timers/undo/", {});
+    setTimers(response.data.timers);
   };
-
-  const formatTime = (milliseconds) => {
-    if (milliseconds === null) return "Not running";
-    const seconds = Math.floor(milliseconds / 1000);
-    const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
-    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${h}:${m}:${s}`;
-  };
-
-  if (loading) return <p>Loading...</p>;
-
+  
   return (
     <div>
       <button
@@ -117,27 +112,27 @@ function Timers() {
       <button
         onClick={undoLastAction}
         className="button"
-        disabled={undoStack.length === 0} // Disable if there's no undo history
       >
         <FontAwesomeIcon icon={faUndo} style={{ marginRight: "5px" }} />
         Undo
       </button>
 
-      {timers.length === 0 ? (
+      { loading ? (
       <p>No timers available</p>
     ) : (
-      timers.map((timer, index) => (
-        <div key={index} style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+      // modified iterator for simplified {food: duration} object
+      Object.entries(timers).map(([foodItem, duration]) => (
+        <div key={foodItem} style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
           <button
-            onClick={() => (deleteMode ? deleteTimer(index) : startOrResetTimer(index))}
+            onClick={() => (deleteMode ? deleteTimer(foodItem, duration) : startOrResetTimer(foodItem))}
             className="button"
           >
-            {timer.item}
+            {foodItem}
           </button>
 
-          <div className="rectangle">{formatTime(timer.remainingTime)}</div>
+          <Timer timestamp={duration} currentTime={currentTime}/>
         </div>
-      ))
+      )) // changed timer to it's own component because It's being reused and refreshed so often
     )}
 
       <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" preload="auto"></audio>

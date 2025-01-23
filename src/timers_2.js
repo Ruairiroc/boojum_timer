@@ -9,11 +9,22 @@ function Timers() {
   const [timers, setTimers] = useState({});
   const [deleteMode, setDeleteMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [interacted, setInteracted] = useState(false);  
   const [currentTime, setCurrentTime] = useState(Date.now());
   const audioRef = useRef(null);
+  const alarm = new Audio("/mixkit-spaceship-alarm-998.mp3");
 
   useEffect(() => {
+    
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
     setLoading(true);
+    window.addEventListener('click', setInteracted(true));
+    window.addEventListener('touchstart', setInteracted(true));
+
+    console.log(interacted);
+
     // .then() is for async functions, it will run the function inside the .then() after the first fetchTimers() function it is tacked onto returns,
     //  thus making sure the function has returned before setting loading to false
     fetchTimers().then(() => setLoading(false));
@@ -23,16 +34,16 @@ function Timers() {
 
     // Cleanup interval on unmount
     return () => clearInterval(interval);
-  }, []);
+  }, [interacted]);
 
   const fetchTimers = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/timers");
-      console.log("Timers fetched:", response.data);  // Log the fetched timers object
+      // console.log("Timers fetched:", response.data);  // Log the fetched timers object
 
       setTimers(response.data);
     } catch (error) {
-      console.error("Error fetching timers:", error);
+      // console.error("Error fetching timers:", error);
     }
   };
 
@@ -51,8 +62,10 @@ function Timers() {
   // };
 
   const startOrResetTimer = async (foodItem) => {
+    setInteracted(true);
+
     try {
-      const duration = 5 * 60 * 1000; // 5 minutes in milliseconds
+      const duration = 5 * 1000; // 5 minutes in milliseconds
 
       // updated post request to send foodItem and duration in the body
       // fooditem is the name of the item gotten from the button click
@@ -63,7 +76,7 @@ function Timers() {
       // only use backend data as source of truth (stops it going out of sync if only using one data source)
       
     } catch (error) {
-      console.error("Error starting/resetting timer:", error);
+      // console.error("Error starting/resetting timer:", error);
     }
   };
 
@@ -71,13 +84,14 @@ function Timers() {
   // we're actually just updating the value in the timers object to null
   // so a post request is more suitable here as it allows necessary data (foodItem) to be sent in the body
   const deleteTimer = async (foodItem, duration) => {
+    console.log("deleting timer", foodItem, duration);
     // only send request if timer is not at zero
     if (duration !== null || duration > currentTime) {
       try {
         const response = await axios.post("http://localhost:5000/api/timers/stop/", { foodItem });
         setTimers(response.data.timers);
       } catch (error) {
-        console.error("Error deleting timer:", error);
+        // console.error("Error deleting timer:", error);
       }
     }
   };
@@ -130,12 +144,12 @@ function Timers() {
             {foodItem}
           </button>
 
-          <Timer timestamp={duration} currentTime={currentTime}/>
+          <Timer timestamp={duration} currentTime={currentTime} interacted={interacted} audioRef={audioRef} foodItem={foodItem} deleteTimer={deleteTimer}/>
         </div>
       )) // changed timer to it's own component because It's being reused and refreshed so often
     )}
 
-      <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" preload="auto"></audio>
+      <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" preload= "auto"></audio>
     </div>
   );
 }

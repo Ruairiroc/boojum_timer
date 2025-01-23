@@ -9,6 +9,7 @@ function Timers() {
   const [timers, setTimers] = useState({});
   const [deleteMode, setDeleteMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [interacted, setInteracted] = useState(false);  
   const [currentTime, setCurrentTime] = useState(Date.now());
   const audioRef = useRef(null);
   const alarm = new Audio("/mixkit-spaceship-alarm-998.mp3");
@@ -19,6 +20,11 @@ function Timers() {
       Notification.requestPermission();
     }
     setLoading(true);
+    window.addEventListener('click', setInteracted(true));
+    window.addEventListener('touchstart', setInteracted(true));
+
+    console.log(interacted);
+
     // .then() is for async functions, it will run the function inside the .then() after the first fetchTimers() function it is tacked onto returns,
     //  thus making sure the function has returned before setting loading to false
     fetchTimers().then(() => setLoading(false));
@@ -28,13 +34,7 @@ function Timers() {
 
     // Cleanup interval on unmount
     return () => clearInterval(interval);
-  }, []);
-
-  const startAudioHandler = useRef(()=>{ // <-- we can put our audio logic here to play.
-    audioRef.muted = false; // <-- sets the audio to unmuted so that the user may here the audio sounds.
-    audioRef.play(); // <-- sets the audio to play so the audio element can start playing for the active user here.
-
-  });
+  }, [interacted]);
 
   const fetchTimers = async () => {
     try {
@@ -62,10 +62,8 @@ function Timers() {
   // };
 
   const startOrResetTimer = async (foodItem) => {
-    // if(audioRef.current.muted){
-    //   startAudioHandler.current(); // <-- we can call the audio function here to play the audio.
-    // }
-    
+    setInteracted(true);
+
     try {
       const duration = 5 * 1000; // 5 minutes in milliseconds
 
@@ -146,12 +144,12 @@ function Timers() {
             {foodItem}
           </button>
 
-          <Timer timestamp={duration} currentTime={currentTime} alarm={alarm} audioRef={audioRef} foodItem={foodItem} deleteTimer={deleteTimer}/>
+          <Timer timestamp={duration} currentTime={currentTime} interacted={interacted} audioRef={audioRef} foodItem={foodItem} deleteTimer={deleteTimer}/>
         </div>
       )) // changed timer to it's own component because It's being reused and refreshed so often
     )}
 
-      <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" muted></audio>
+      <audio ref={audioRef} src="/mixkit-spaceship-alarm-998.mp3" preload= "auto"></audio>
     </div>
   );
 }

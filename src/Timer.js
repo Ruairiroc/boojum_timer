@@ -21,20 +21,7 @@ const Timer = React.memo(({ timestamp, currentTime,interacted, audioRef, foodIte
     return `${h}:${m}:${s}`;
   };
 
-  const showChromeNotification = (foodItem, ) => {
 
-
-
-
-
-
-
-    // audioRef.play();
-    // alert(`${foodItem}'s timer has finished!`);
-    // audioRef.pause();
-    // audioRef.currentTime = 0;
-
-    return
     // if (Notification.permission === "granted") {
     //     const notification = new Notification("Timer Done!", {
     //         body: `${foodItem}'s timer has finished. Click to stop the sound.`,
@@ -46,28 +33,35 @@ const Timer = React.memo(({ timestamp, currentTime,interacted, audioRef, foodIte
     //         notification.close();
     //     };
     // }
-};
   const timeLeft = timestamp - currentTime;
 
   useEffect(() => {
-    if (timeLeft <= 0 && timestamp) {
+    if (timeLeft <= 0 && timestamp && !activated) {
       setActivated(true);
     
-    if(interacted === true){ 
-      deleteTimer(foodItem);     
-      audioRef.current.play();
-      audioRef.current.muted = false;
+    if(interacted){ 
+      deleteTimer(foodItem);  
+      audioRef.current.muted = false;   
+      audioRef.current.play().catch(error => {
+        console.error("Error playing audio:", error);
+      });
       alert(`${foodItem}'s timer has finished!`);
-      audioRef.current.currentTime = 0;
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       setActivated(false);
     }
   }
 
-  }, [timeLeft, timestamp, audioRef, foodItem, deleteTimer, interacted, activated]);
+  }, [timeLeft, timestamp, audioRef,  interacted]);
 
   return (
-    <div className="rectangle" style={{ background: activated ? "red" : "" }} onClick={activated ? () => {deleteTimer(foodItem); setActivated(false)}: null}>
+    <div 
+      className="rectangle" 
+      style={{ backgroundColor: activated ? "red" : "" }} 
+      onClick={
+        activated ? () => 
+        {deleteTimer(foodItem); setActivated(false)}: 
+        null}>
       {formatTime(timeLeft)}
     </div>
 
